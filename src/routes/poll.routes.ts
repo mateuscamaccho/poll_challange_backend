@@ -2,6 +2,7 @@ import express from "express";
 import PollController from "../controllers/poll.controller";
 import { createPollSchema, listPollByIdSchema, listPollByStatusSchema, updatePollSchema } from "../schemas/poll.schemas";
 import { validate } from "../middlewares/validate.middleware";
+import { runPollJobsNow } from '../jobs/pollScheduler';
 
 const router = express.Router();
 
@@ -238,6 +239,41 @@ router.post("/", validate(createPollSchema), pollController.create.bind(pollCont
  *         description: Internal server error
  */
 router.put("/:id", validate(listPollByIdSchema, 'params'), validate(updatePollSchema), pollController.update.bind(pollController));
+
+/**
+ * @swagger
+ * /api/poll/run-scheduler:
+ *   post:
+ *     summary: Trigger the poll scheduler manually
+ *     description: Executes the activation/closing job immediately. Intended for development/testing. In production this endpoint should be protected.
+ *     tags:
+ *       - Poll Controller
+ *     responses:
+ *       200:
+ *         description: Scheduler executed, returns counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 activated:
+ *                   type: integer
+ *                 closed:
+ *                   type: integer
+ *                 when:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: Error running scheduler
+ */
+router.post('/run-scheduler', async (req, res) => {
+	try {
+		const result = await runPollJobsNow();
+		return res.status(200).json({ success: true, data: result });
+	} catch (err) {
+		return res.status(500).json({ success: false, error: 'Failed to run scheduler' });
+	}
+});
 
 /**
  * @swagger

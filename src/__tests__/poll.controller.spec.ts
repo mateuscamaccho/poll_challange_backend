@@ -87,19 +87,27 @@ describe('PollController', () => {
 	});
 
 	describe('create', () => {
-		it('should create a poll and return 201', async () => {
-			const body = { question: 'Q', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 1000).toISOString(), options: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] };
-			mockPrisma.poll.create.mockResolvedValue({ ...mockPoll, ...body });
+			it('should create a poll and return 201', async () => {
+				// ensure start_date is at top of next hour (normalized by controller)
+				const now = new Date();
+				const start = new Date(now);
+				if (start.getMinutes() !== 0 || start.getSeconds() !== 0 || start.getMilliseconds() !== 0) {
+					start.setHours(start.getHours() + 1, 0, 0, 0);
+				}
+				const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour later
 
-			const req: any = { body };
-			const res = mockResponse();
+				const body = { question: 'Q', start_date: start.toISOString(), end_date: end.toISOString(), options: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] };
+				mockPrisma.poll.create.mockResolvedValue({ ...mockPoll, ...body });
 
-			await controller.create(req, res);
+				const req: any = { body };
+				const res = mockResponse();
 
-			expect(mockPrisma.poll.create).toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(201);
-			expect(res.json).toHaveBeenCalled();
-		});
+				await controller.create(req, res);
+
+				expect(mockPrisma.poll.create).toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(201);
+				expect(res.json).toHaveBeenCalled();
+			});
 	});
 
 	describe('update', () => {

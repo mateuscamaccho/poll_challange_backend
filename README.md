@@ -67,6 +67,7 @@ Base: /api/poll
 - POST /api/poll — cria nova enquete (body com question, start_date, end_date, options)
 - PUT /api/poll/:id — atualiza enquete (somente quando status = inactive)
 - DELETE /api/poll/:id — deleta enquete (não permite se status = closed)
+- POST /api/poll/run-scheduler — executa o job de ativação/fechamento imediatamente (útil para testes)
 
 Consulte a UI do Swagger (`/docs`) para descrição completa de schemas e exemplos.
 
@@ -111,6 +112,12 @@ Verifique e ajuste as variáveis de ambiente para apontar para o serviço de ban
 
 - Validações de entrada usam Zod, leia `src/schemas/poll.schemas.ts` para as regras (ex.: mínimo de opções, formatos de data).
 - A API já expõe a documentação Swagger em `/docs` — útil para testar rapidamente com exemplos.
+
+- Endpoint de execução manual do scheduler:
+
+	- POST /api/poll/run-scheduler
+	- Retorna JSON com contadores: { activated, closed, when }
+	- Observação: esse endpoint é pensado para desenvolvimento / testes. Em produção proteja esse endpoint (auth) ou remova-o.
 
 ---
 

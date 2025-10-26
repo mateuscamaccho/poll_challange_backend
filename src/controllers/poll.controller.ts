@@ -5,6 +5,15 @@ class PollController {
 
     constructor() { }
 
+    private roundUpToNextHour(d: Date) {
+        const date = new Date(d);
+        if (date.getMinutes() === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0) {
+            return date;
+        }
+        date.setHours(date.getHours() + 1, 0, 0, 0);
+        return date;
+    }
+
     public async listAll(req: express.Request, res: express.Response){
         try {
             const poll = await prisma.poll.findMany({
@@ -82,12 +91,23 @@ class PollController {
         try {
             const { question, start_date, end_date, options } = req.body;
 
+            const parsedStart = new Date(start_date);
+            const normalizedStart = this.roundUpToNextHour(parsedStart);
+            const parsedEnd = new Date(end_date);
+
+            if (parsedEnd <= normalizedStart) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'end_date must be after the adjusted start_date (polls start at top of hour)'
+                });
+            }
+
             const poll = await prisma.poll.create({
                 data: {
                     question: question,
                     status: "inactive",
-                    start_date: new Date(start_date),
-                    end_date: new Date(end_date),
+                    start_date: normalizedStart,
+                    end_date: parsedEnd,
                     PollOptions: {
                         create: options.map((opt: { text: string }) => ({
                             text: opt.text,
@@ -141,8 +161,26 @@ class PollController {
             const data: any = {};
             if (question !== undefined) data.question = question;
             if (status !== undefined) data.status = status;
-            if (start_date !== undefined) data.start_date = new Date(start_date);
-            if (end_date !== undefined) data.end_date = new Date(end_date);
+
+            // If a start_date is provided, normalize it to next top-of-hour
+            if (start_date !== undefined) {
+                const parsedStart = new Date(start_date);
+                const normalizedStartDate = this.roundUpToNextHour(parsedStart);
+
+                // determine which end_date to compare against: provided end_date or existing.end_date
+                const parsedEnd = end_date !== undefined ? new Date(end_date) : new Date(existing.end_date);
+                if (parsedEnd <= normalizedStartDate) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'end_date must be after the adjusted start_date (polls start at top of hour)'
+                    });
+                }
+
+                data.start_date = normalizedStartDate;
+                if (end_date !== undefined) data.end_date = parsedEnd;
+            } else {
+                if (end_date !== undefined) data.end_date = new Date(end_date);
+            }
 
             // If options provided, replace existing options with the new set
             if (options !== undefined) {

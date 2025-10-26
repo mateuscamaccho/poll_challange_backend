@@ -35,6 +35,10 @@ app.use('/api', defaultRoutes)
 import pollRoutes from './routes/poll.routes';
 app.use('/api/poll', pollRoutes);
 
+// Start scheduled jobs (activating/deactivating polls hourly)
+import { startPollScheduler } from './jobs/pollScheduler';
+startPollScheduler();
+
 // Middleware 404 - SEMPRE NO FINAL, depois de todas as rotas
 app.use((req, res, next) => {
   res.status(404).json({
